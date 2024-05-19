@@ -49,12 +49,12 @@ class SearcherApp(App):
     async def on_input_changed(self, message: Input.Changed) -> None:
         """Handles a changed text message."""
         log = self.query_one("#results", RichLog)
-        if len(message.value) > 1:
+        if len(message.value) > 2:
             self.query_one(Label).update(CTRL_C)
             log.loading = True
             self.lookup_word(message.value)
             log.loading = False
-        elif len(message.value) == 1:
+        elif len(message.value) > 0:
             # Don't search for single letter: too many results
             log.loading = True
             self.query_one(Label).update(ONE_MORE)
