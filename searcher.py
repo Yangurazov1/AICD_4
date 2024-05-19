@@ -13,9 +13,17 @@ from sset import SSet
 
 FILENAME = "small-words.txt"
 
+# Messages for footer
+CTRL_C = Text.from_markup("Press [yellow]Ctrl-C[/] to exit.")
+ONE_MORE = Text.from_markup("Press [yellow]Ctrl-C[/] to exit. [bold]Type one more letter...")
+LOADING = Text.from_markup("Loading dictionary...")
+
 
 class SearcherApp(App):
     """A textual app to interactively search in dictionary"""
+
+    TITLE = "Interactive Dictionary Search"
+    SUB_TITLE = "It's free (and we don't spy on you, honestly!)"
 
     sset = SSet(FILENAME)
 
@@ -24,25 +32,37 @@ class SearcherApp(App):
         yield Header(show_clock=True)
         yield Input(placeholder="Type a string, e.g. squire")
         yield RichLog(id="results")
-        yield Label("Press Ctrl-C to exit")
+        yield Label(LOADING)
 
-    def on_mount(self) -> None:
+    async def on_mount(self) -> None:
         """Called when app starts"""
         # Give the input focus, so we can start typing
-        self.query_one(Input).loading = True
-        self.sset.load()
-        self.query_one(Input).loading = False
         self.query_one(Input).focus()
+        self.query_one("#results", RichLog).loading = True
 
-    def on_input_changed(self, message: Input.Changed) -> None:
+    async def on_ready(self) -> None:
+        """Called when app is ready"""
+        self.sset.load()
+        self.query_one("#results", RichLog).loading = False
+        self.query_one(Label).update(CTRL_C)
+
+    async def on_input_changed(self, message: Input.Changed) -> None:
         """Handles a changed text message."""
-        if message.value:
-            self.query_one("#results", RichLog).loading = True
+        log = self.query_one("#results", RichLog)
+        if len(message.value) > 1:
+            self.query_one(Label).update(CTRL_C)
+            log.loading = True
             self.lookup_word(message.value)
-            self.query_one("#results", RichLog).loading = False
+            log.loading = False
+        elif len(message.value) == 1:
+            # Don't search for single letter: too many results
+            log.loading = True
+            self.query_one(Label).update(ONE_MORE)
         else:
             # Clear results
-            self.query_one("#results", RichLog).clear()
+            self.query_one(Label).update(CTRL_C)
+            log.loading = False
+            log.clear()
 
     @work(exclusive=True)
     async def lookup_word(self, substr: str) -> None:
